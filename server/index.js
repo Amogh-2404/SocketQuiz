@@ -6,7 +6,11 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['https://quiz.ramogh.com' ,'https://vercel.com/r-amoghs-projects/socket-quiz/87jDBfMrBN2JoebCgQM3y6QCYhfT', 'http://localhost:3000'],
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 
 const server = http.createServer(app);
 const io = socketIo(server, {

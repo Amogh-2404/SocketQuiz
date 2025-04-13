@@ -75,7 +75,7 @@ const GameContext = createContext<GameContextType>({
 });
 
 // Socket server URL - typically would be from env variables
-const SOCKET_SERVER_URL = 'http://localhost:5001';
+const socketUrl = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || 'http://localhost:5002';
 
 export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -96,7 +96,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Initialize socket connection
   useEffect(() => {
-    const newSocket = io(SOCKET_SERVER_URL);
+    const newSocket = io(socketUrl);
     
     newSocket.on('connect', () => {
       setIsConnected(true);
@@ -238,7 +238,7 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!socket || !isConnected) {
       console.log("Attempting to connect to server...");
       // Try to reconnect if not connected
-      const newSocket = io(SOCKET_SERVER_URL, {
+      const newSocket = io(socketUrl, {
         reconnectionAttempts: 3,
         timeout: 10000
       });
