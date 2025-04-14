@@ -6,7 +6,7 @@ import { useGame } from '../context/GameContext';
 import Timer from './Timer';
 
 const QuizScreen: React.FC = () => {
-  const { gameState, player, submitAnswer } = useGame();
+  const { gameState, player, submitAnswer, disconnect } = useGame();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
@@ -46,6 +46,12 @@ const QuizScreen: React.FC = () => {
     }
   };
 
+  const handleQuit = () => {
+    if (confirm("Are you sure you want to quit the quiz? You'll be removed from the session.")) {
+      disconnect();
+    }
+  };
+
   if (!currentQuestion) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
@@ -70,6 +76,16 @@ const QuizScreen: React.FC = () => {
       className="flex flex-col items-center justify-center min-h-screen p-4 relative"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-full blur-3xl"></div>
+      
+      {/* Quit button - positioned in the top right corner */}
+      <motion.button
+        className="absolute top-4 right-4 z-20 px-3 py-1.5 bg-red-500/70 hover:bg-red-600/90 text-white rounded-lg text-sm font-medium backdrop-blur-sm"
+        onClick={handleQuit}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        Quit
+      </motion.button>
       
       <motion.div 
         className="w-full max-w-2xl bg-white/10 backdrop-blur-sm dark:bg-gray-800/50 rounded-xl shadow-2xl p-8 relative z-10"
