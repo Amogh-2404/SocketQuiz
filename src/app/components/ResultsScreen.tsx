@@ -1,148 +1,146 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useGame } from '../context/GameContext';
-import Button from './Button';
 import Confetti from './Confetti';
 
-const Medal: React.FC<{ rank: number }> = ({ rank }) => {
-  // Medal colors based on rank
-  const colors = {
-    1: { bg: 'bg-yellow-500', text: 'text-yellow-900', border: 'border-yellow-600' },
-    2: { bg: 'bg-gray-300', text: 'text-gray-800', border: 'border-gray-400' },
-    3: { bg: 'bg-amber-600', text: 'text-amber-900', border: 'border-amber-700' },
-  };
-  
-  const color = colors[rank as keyof typeof colors] || { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' };
-  
-  return (
-    <motion.div
-      className={`${color.bg} ${color.text} h-10 w-10 md:h-12 md:w-12 rounded-full border-2 ${color.border} flex items-center justify-center font-bold`}
-      initial={{ scale: 0, rotate: -180 }}
-      animate={{ scale: 1, rotate: 0 }}
-      transition={{ 
-        type: 'spring',
-        stiffness: 260,
-        damping: 20,
-        delay: 0.3 + (rank * 0.1)
-      }}
-    >
-      {rank}
-    </motion.div>
-  );
-};
-
-const ResultRow: React.FC<{ 
-  result: { id: string; name: string; score: number; rank: number; correctAnswers: number }; 
-  isCurrentPlayer: boolean;
-  delay: number;
-}> = ({ result, isCurrentPlayer, delay }) => {
-  return (
-    <motion.div 
-      className={`flex items-center p-4 rounded-lg mb-3 ${
-        isCurrentPlayer ? 'bg-blue-100 dark:bg-blue-900' : 'bg-white dark:bg-gray-800'
-      }`}
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3, delay }}
-    >
-      <Medal rank={result.rank} />
-      
-      <div className="ml-4 flex-grow">
-        <div className="flex justify-between">
-          <span className={`font-medium ${isCurrentPlayer ? 'text-blue-800 dark:text-blue-200' : 'text-gray-900 dark:text-white'}`}>
-            {result.name} {isCurrentPlayer && <span className="text-xs">(You)</span>}
-          </span>
-          <span className="font-bold text-lg text-purple-600 dark:text-purple-300">
-            {result.score} pts
-          </span>
-        </div>
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          {result.correctAnswers} correct answer{result.correctAnswers !== 1 ? 's' : ''}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
 const ResultsScreen: React.FC = () => {
-  const { results, playerId, goHome } = useGame();
-  const [showConfetti, setShowConfetti] = useState(false);
-  
-  // Sort results by rank
-  const sortedResults = [...results].sort((a, b) => a.rank - b.rank);
-  
-  // Find current player's rank
-  const currentPlayerResult = results.find(result => result.id === playerId);
-  const isWinner = currentPlayerResult?.rank === 1;
-  
-  useEffect(() => {
-    // Show confetti animation for the winner
-    if (isWinner) {
+  const { gameState, player, disconnect } = useGame();
+  const [showConfetti, setShowConfetti] = React.useState(false);
+
+  React.useEffect(() => {
+    const playerResult = gameState.results.find(r => r.playerId === player?.id);
+    // Only show confetti for first place winner
+    if (gameState.results.length > 0 && playerResult && playerResult.rank === 1) {
       setShowConfetti(true);
-      
-      const timer = setTimeout(() => {
-        setShowConfetti(false);
-      }, 5000);
-      
+      const timer = setTimeout(() => setShowConfetti(false), 5000);
       return () => clearTimeout(timer);
     }
-  }, [isWinner]);
+  }, [gameState.results, player?.id]);
+
+  const playerResult = gameState.results.find(r => r.playerId === player?.id);
+  const rank = playerResult?.rank || 0;
+
+  const getPlayerName = (playerId: string) => {
+    const foundPlayer = gameState.players.find(p => p.id === playerId);
+    return foundPlayer?.name || 'Unknown Player';
+  };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-purple-900 p-4">
-      <Confetti active={showConfetti} />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="flex flex-col items-center justify-center min-h-screen p-4 relative"
+    >
+      {showConfetti && <Confetti />}
+      
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-full blur-3xl"></div>
       
       <motion.div 
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        className="w-full max-w-md bg-white/10 backdrop-blur-sm dark:bg-gray-800/50 rounded-xl shadow-2xl p-8 relative z-10"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 100 }}
       >
         <div className="text-center mb-8">
           <motion.h2 
-            className="text-3xl font-bold text-gray-900 dark:text-white mb-1"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
+            className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600 dark:from-blue-400 dark:to-indigo-600 mb-4"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 100 }}
           >
-            Final Results
+            Game Over!
           </motion.h2>
-          <motion.p
-            className="text-gray-600 dark:text-gray-300"
+          <motion.p 
+            className="text-2xl text-white"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
+            transition={{ delay: 0.2 }}
           >
-            {isWinner ? 'Congratulations! You won! 🎉' : 'Game completed!'}
+            Your final score: <span className="font-bold text-purple-300">{player?.score || 0}</span>
           </motion.p>
         </div>
-        
-        {sortedResults.length > 0 && (
-          <div className="mb-8">
-            {sortedResults.map((result, index) => (
-              <ResultRow 
-                key={result.id} 
-                result={result} 
-                isCurrentPlayer={result.id === playerId}
-                delay={0.3 + (index * 0.1)}
-              />
-            ))}
-          </div>
-        )}
-        
+
+        {/* Medal Display */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.3 }}
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.5 }}
+          className="flex justify-center mb-8"
         >
-          <Button onClick={goHome} variant="primary" fullWidth>
-            Back to Home
-          </Button>
+          {rank === 1 && (
+            <div className="text-8xl">🥇</div>
+          )}
+          {rank === 2 && (
+            <div className="text-8xl">🥈</div>
+          )}
+          {rank === 3 && (
+            <div className="text-8xl">🥉</div>
+          )}
+          {rank > 3 && (
+            <div className="text-6xl">🏅</div>
+          )}
         </motion.div>
+
+        {/* Leaderboard */}
+        <motion.div 
+          className="mb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+        >
+          <h3 className="text-xl font-semibold text-white mb-4">
+            Final Rankings
+          </h3>
+          <div className="space-y-3">
+            {gameState.results
+              .sort((a, b) => a.rank - b.rank)
+              .map((result, index) => (
+                <motion.div
+                  key={result.playerId}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.8 + index * 0.1 }}
+                  className={`flex items-center justify-between p-4 rounded-xl backdrop-blur-sm border
+                    ${result.playerId === player?.id
+                      ? 'bg-white/20 border-purple-500'
+                      : 'bg-white/5 border-white/10'
+                    }`}
+                >
+                  <div className="flex items-center">
+                    <span className={`w-8 h-8 flex items-center justify-center rounded-full 
+                      ${result.rank === 1 ? 'bg-yellow-500' : 
+                        result.rank === 2 ? 'bg-gray-300' : 
+                        result.rank === 3 ? 'bg-amber-600' : 
+                        'bg-white/20'} 
+                      text-white font-bold`}>
+                      {result.rank}
+                    </span>
+                    <span className="text-white ml-3 font-medium">
+                      {getPlayerName(result.playerId)}
+                      {result.playerId === player?.id && " (You)"}
+                    </span>
+                  </div>
+                  <span className="font-bold text-purple-300">
+                    {result.score}
+                  </span>
+                </motion.div>
+              ))}
+          </div>
+        </motion.div>
+
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={disconnect}
+          className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+        >
+          Play Again
+        </motion.button>
       </motion.div>
-    </div>
+    </motion.div>
   );
 };
 
