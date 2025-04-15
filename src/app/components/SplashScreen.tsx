@@ -1,155 +1,84 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import Button from './Button';
+import React from 'react';
+import { motion } from 'framer-motion';
 import { useGame } from '../context/GameContext';
 
-// Animation variants
-const titleVariants = {
-  hidden: { opacity: 0, y: -50 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { 
-      duration: 0.5, 
-      delay: 0.2 
-    }
-  }
-};
-
-const subtitleVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { 
-      duration: 0.5, 
-      delay: 0.4 
-    }
-  }
-};
-
-const buttonVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { 
-      duration: 0.5, 
-      delay: 0.6 
-    }
-  }
-};
-
 const SplashScreen: React.FC = () => {
-  const { play, isConnected } = useGame();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [stars, setStars] = useState<Array<{id: number, x: string, y: string, opacity: number, scale: number, width: number}>>([]);
-  
-  // Generate stars on client-side only to prevent hydration mismatch
-  useEffect(() => {
-    const generatedStars = Array.from({ length: 100 }).map((_, i) => ({
-      id: i,
-      x: `${Math.random() * 100}%`,
-      y: `${Math.random() * 100}%`,
-      opacity: Math.random() * 0.8,
-      scale: Math.random(),
-      width: Math.max(1, Math.random() * 4),
-    }));
-    setStars(generatedStars);
-  }, []);
-  
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"]
-  });
-  
-  const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '20%']);
-  const backgroundScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const contentY = useTransform(scrollYProgress, [0, 0.5], [0, -50]);
+  const { connect } = useGame();
+  const [playerName, setPlayerName] = React.useState('');
+
+  const handlePlay = () => {
+    if (playerName.trim()) {
+      connect(playerName.trim());
+    }
+  };
 
   return (
-    <div 
-      ref={containerRef}
-      className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden"
-      style={{ position: 'relative' }}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="flex flex-col items-center justify-center min-h-screen p-4 relative"
     >
-      {/* Parallax Background */}
-      <motion.div 
-        className="absolute inset-0 w-full h-full z-0 bg-gradient-to-b from-blue-900 to-purple-900"
-        style={{ 
-          y: backgroundY,
-          scale: backgroundScale,
-        }}
-      >
-        {/* Animated stars - client-side rendered to prevent hydration mismatch */}
-        {stars.map((star) => (
-          <motion.div
-            key={star.id}
-            className="absolute bg-white rounded-full"
-            initial={{ 
-              x: star.x, 
-              y: star.y,
-              opacity: star.opacity,
-              scale: star.scale,
-            }}
-            animate={{ 
-              opacity: [null, Math.random() * 0.5, Math.random()],
-              scale: [null, Math.random() + 0.3, Math.random()],
-            }}
-            transition={{ 
-              duration: 1 + Math.random() * 5,
-              repeat: Infinity,
-              repeatType: "reverse"
-            }}
-            style={{ 
-              width: `${star.width}px`,
-              height: `${star.width}px`,
-            }}
-          />
-        ))}
-      </motion.div>
-
-      {/* Content */}
-      <motion.div 
-        className="relative z-10 text-center p-8 max-w-2xl"
-        style={{ opacity: contentOpacity, y: contentY }}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-full blur-3xl"></div>
+      
+      <motion.div
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
+        className="text-center mb-12 relative z-10"
       >
         <motion.h1 
-          className="text-5xl md:text-6xl font-bold text-white mb-4 tracking-tight"
-          variants={titleVariants}
-          initial="hidden"
-          animate="visible"
+          className="text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600 dark:from-blue-400 dark:to-indigo-600 mb-6"
+          initial={{ scale: 0.9 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.3, type: "spring", stiffness: 100 }}
         >
-          Dynamic Multiplayer <span className="text-yellow-400">Quiz Show</span>
+          Dynamic Quiz Show
         </motion.h1>
-        
         <motion.p 
-          className="text-xl text-blue-200 mb-8"
-          variants={subtitleVariants}
-          initial="hidden"
-          animate="visible"
+          className="text-2xl text-gray-200 dark:text-gray-300 font-light"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
         >
-          Test your knowledge against other players in real-time with beautifully animated quizzes!
+          Test your knowledge in real-time with players worldwide!
         </motion.p>
-        
-        <motion.div
-          variants={buttonVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <Button 
-            onClick={play} 
-            disabled={!isConnected}
-            className="px-8 py-4 text-xl shadow-lg"
-          >
-            Play Now
-          </Button>
-        </motion.div>
       </motion.div>
-    </div>
+
+      <motion.div
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.6, type: "spring", stiffness: 100 }}
+        className="w-full max-w-md relative z-10"
+      >
+        <div className="mb-8">
+          <motion.input
+            type="text"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            placeholder="Enter your name"
+            className="w-full px-6 py-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 
+                     text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 
+                     dark:focus:ring-blue-500/50 transition-all duration-300"
+            whileFocus={{ scale: 1.02 }}
+          />
+        </div>
+        <motion.button
+          onClick={handlePlay}
+          disabled={!playerName.trim()}
+          className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300
+                    ${playerName.trim() 
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg hover:shadow-xl' 
+                      : 'bg-gray-500/50 text-gray-400 cursor-not-allowed'}`}
+          whileHover={playerName.trim() ? { scale: 1.02 } : {}}
+          whileTap={playerName.trim() ? { scale: 0.98 } : {}}
+        >
+          Join Game
+        </motion.button>
+      </motion.div>
+    </motion.div>
   );
 };
 
