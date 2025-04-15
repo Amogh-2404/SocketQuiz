@@ -86,7 +86,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [socket]);
 
   const connect = (name: string) => {
-    const newSocket = io('http://localhost:5001');
+    const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || 'http://localhost:5001');
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
