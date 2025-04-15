@@ -6,12 +6,17 @@ const fs = require('fs');
 const path = require('path');
 const NetworkMonitor = require('./networkMonitor');
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5002;
 let isServerRunning = false;
 let sessionMergeInterval = null;
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Basic test endpoint
 app.get('/', (req, res) => {
@@ -23,14 +28,38 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', port: PORT });
 });
 
+// Add a reconnect endpoint to help clients reconnect
+app.get('/reconnect-info', (req, res) => {
+  res.json({
+    serverRunning: true,
+    activeSessions: sessions.size,
+    availableSlots: MAX_SESSIONS - sessions.size,
+    lobbyAvailable: Array.from(sessions.values()).some(s => s.status === 'lobby' && s.players.length < 4),
+    serverTime: Date.now()
+  });
+});
+
+// CORS preflight for all routes
+app.options('*', cors());
+
 const server = http.createServer(app);
 
 // Simple socket.io setup
 const io = socketIo(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
+  },
+  // Simplify socket.io config to prevent connection issues
+  pingTimeout: 60000,
+  pingInterval: 10000,
+  transports: ['polling', 'websocket'], // Try polling first for compatibility
+  allowUpgrades: true,
+  connectTimeout: 30000,
+  // Disable cookie to prevent auth issues
+  cookie: false
 });
 
 // Initialize network monitor
@@ -264,6 +293,9 @@ function startLobbyTimer(sessionId) {
     clearTimeout(session.lobbyTimer);
   }
   
+  // Set lobby start time
+  session.lobbyStartTime = Date.now();
+  
   // Set new timer
   session.lobbyTimer = setTimeout(() => {
     // Start the game if we still have the session and at least one player
@@ -271,6 +303,25 @@ function startLobbyTimer(sessionId) {
       startGame(sessionId);
     }
   }, LOBBY_TIMER * 1000);
+  
+  // Setup lobby timer sync interval
+  if (session.lobbyTimerInterval) {
+    clearInterval(session.lobbyTimerInterval);
+  }
+  
+  session.lobbyTimerInterval = setInterval(() => {
+    const timeRemaining = Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - session.lobbyStartTime) / 1000));
+    
+    // Send lobby timer update to all clients
+    io.to(sessionId).emit('lobby-timer-update', {
+      lobbyTimeRemaining: timeRemaining
+    });
+    
+    // If timer reaches 0, clear the interval
+    if (timeRemaining <= 0) {
+      clearInterval(session.lobbyTimerInterval);
+    }
+  }, 1000);
   
   // Log
   console.log(`Lobby timer started for session ${sessionId}. Game will start in ${LOBBY_TIMER} seconds.`);
@@ -282,6 +333,12 @@ function startGame(sessionId) {
   if (!session) return;
   
   console.log(`Starting game for session ${sessionId} with ${session.players.length} players`);
+  
+  // Clear any lobby timer intervals
+  if (session.lobbyTimerInterval) {
+    clearInterval(session.lobbyTimerInterval);
+    session.lobbyTimerInterval = null;
+  }
   
   // Update session status
   session.status = 'playing';
@@ -439,29 +496,134 @@ function endGame(sessionId) {
   }, 30000);
 }
 
-// Start the server
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  isServerRunning = true;
+// Add event logging for debugging
+io.engine.on('connection_error', (err) => {
+  console.error('Connection error:', err.code, err.message, err.context);
 });
 
-// Socket connection handling
+// WebRTC signaling
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-  networkMonitor.startMonitoring(socket.id);
+  // Safety check in case setTimeout method isn't available on socket.conn
+  if (socket.conn && typeof socket.conn.setTimeout === 'function') {
+    socket.conn.setTimeout(60000); // Set a longer timeout for this socket
+  }
+  
+  console.log('New client connected:', socket.id, 'Transport:', socket.conn?.transport?.name || 'unknown');
+  
+  // Send an immediate welcome message to confirm connection
+  socket.emit('welcome', {
+    socketId: socket.id,
+    time: Date.now(),
+    activeConnections: io.engine.clientsCount
+  });
+  
+  // Handle WebRTC signaling
+  socket.on('webrtc-signal', (data) => {
+    const { to, from, signal } = data;
+    io.to(to).emit('webrtc-signal', { from, signal });
+  });
+  
+  // Inform peers when a socket disconnects
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+    socket.broadcast.emit('peer-disconnected', socket.id);
+    
+    try {
+      networkMonitor.stopMonitoring(socket.id);
+    } catch (err) {
+      console.error('Error stopping network monitoring:', err.message);
+    }
+    
+    // Don't immediately remove player from session on disconnect
+    // Instead, wait a short period to allow for reconnection
+    let disconnectTimeout = setTimeout(() => {
+      for (const [sessionId, session] of sessions) {
+        const playerIndex = session.players.findIndex(p => p.id === socket.id);
+        if (playerIndex !== -1) {
+          session.players.splice(playerIndex, 1);
+          
+          // If no players left, remove the session
+          if (session.players.length === 0) {
+            sessions.delete(sessionId);
+            if (session.lobbyTimer) {
+              clearTimeout(session.lobbyTimer);
+            }
+          } else {
+            // Update remaining players
+            io.to(sessionId).emit('gameState', {
+              gameState: session.status,
+              players: session.players,
+              currentQuestion: session.currentQuestionIndex >= 0 ? session.questions[session.currentQuestionIndex] : null,
+              questionNumber: session.currentQuestionIndex + 1,
+              totalQuestions: QUESTIONS_PER_GAME,
+              timeLimit: session.currentQuestionIndex >= 0 ? calculateAdaptiveTimer(sessionId) : 0,
+              timeRemaining: session.currentQuestionIndex >= 0 ? session.questionEndTime - Date.now() : 0,
+              lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - session.lobbyStartTime) / 1000)),
+              results: []
+            });
+          }
+          break;
+        }
+      }
+    }, 5000); // Wait 5 seconds before removing player
+    
+    // Store the timeout in a Map so it can be cleared on reconnect
+    if (!global.disconnectTimeouts) {
+      global.disconnectTimeouts = new Map();
+    }
+    global.disconnectTimeouts.set(socket.id, disconnectTimeout);
+  });
+  
+  networkMonitor.startMonitoring(socket);
 
   // Network monitoring - handle pings
-  socket.on('ping', () => {
-    const stats = networkMonitor.getStats(socket.id);
-    socket.emit('pong', {
-      latency: stats?.averageLatency || 0,
-      packetLoss: stats?.packetLoss || 0
-    });
+  socket.on('ping', (data) => {
+    // Simple ping response - don't log to avoid console spam
+    if (data && data.timestamp) {
+      // This is a NetworkMonitor ping, respond with pong
+      socket.emit('pong', { timestamp: data.timestamp });
+      // Call handlePong directly to update stats
+      networkMonitor.handlePong(socket, { timestamp: data.timestamp });
+    } else if (data && data.keepAlive) {
+      // This is a keep-alive ping from the client
+      socket.emit('pong', { keepAlive: true, serverTime: Date.now() });
+    } else {
+      // This is a regular ping request from client
+      const stats = networkMonitor.getStats(socket.id);
+      socket.emit('pong', {
+        latency: stats?.averageLatency || 0,
+        packetLoss: stats?.packetLoss || 0,
+        serverTime: Date.now()
+      });
+    }
   });
 
   // Handle player joining
   socket.on('join', ({ name }) => {
     console.log(`Player ${name} (${socket.id}) joining game`);
+    
+    // Check if player is already in a session
+    let existingSessionId = null;
+    for (const [sessionId, session] of sessions) {
+      if (session.players.some(p => p.id === socket.id)) {
+        existingSessionId = sessionId;
+        console.log(`Player ${name} already in session ${sessionId}, skipping join`);
+        
+        // Just re-emit the current game state
+        io.to(sessionId).emit('gameState', {
+          gameState: session.status,
+          players: session.players,
+          currentQuestion: session.currentQuestionIndex >= 0 ? session.questions[session.currentQuestionIndex] : null,
+          questionNumber: session.currentQuestionIndex + 1,
+          totalQuestions: QUESTIONS_PER_GAME,
+          timeLimit: session.currentQuestionIndex >= 0 ? calculateAdaptiveTimer(sessionId) : 0,
+          timeRemaining: session.currentQuestionIndex >= 0 ? session.questionEndTime - Date.now() : 0,
+          lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - session.lobbyStartTime) / 1000)),
+          results: []
+        });
+        return;
+      }
+    }
     
     // Check if we've reached the maximum number of sessions
     if (sessions.size >= MAX_SESSIONS && !canPlayerJoinExistingSession()) {
@@ -493,37 +655,48 @@ io.on('connection', (socket) => {
     }
 
     if (targetSession) {
-      // Add player to session
-      const player = {
-        id: socket.id,
-        name,
-        score: 0,
-        answers: [],
-        isReady: false,
-        isHost: targetSession.players.length === 0
-      };
-      targetSession.players.push(player);
+      try {
+        // Add player to session
+        const player = {
+          id: socket.id,
+          name,
+          score: 0,
+          answers: [],
+          isReady: false,
+          isHost: targetSession.players.length === 0
+        };
+        targetSession.players.push(player);
 
-      // Join socket room
-      socket.join(targetSession.id);
+        // Join socket room
+        socket.join(targetSession.id);
+        console.log(`Socket ${socket.id} joined room ${targetSession.id}`);
 
-      // Start lobby timer if this is the first player
-      if (targetSession.players.length === 1) {
-        startLobbyTimer(targetSession.id);
+        // Start lobby timer if this is the first player
+        if (targetSession.players.length === 1) {
+          startLobbyTimer(targetSession.id);
+        }
+
+        // Send an acknowledgement immediately to keep connection alive
+        socket.emit('join-ack', { sessionId: targetSession.id });
+
+        // Send game state immediately - don't delay
+        console.log(`Sending game state to ${socket.id} in session ${targetSession.id}`);
+        // Send game state to all players in the session
+        io.to(targetSession.id).emit('gameState', {
+          gameState: 'lobby',
+          players: targetSession.players,
+          currentQuestion: null,
+          questionNumber: 0,
+          totalQuestions: QUESTIONS_PER_GAME,
+          timeLimit: 0,
+          timeRemaining: 0,
+          lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - targetSession.lobbyStartTime) / 1000)),
+          results: []
+        });
+      } catch (error) {
+        console.error('Error handling join:', error);
+        socket.emit('error', 'SERVER_ERROR');
       }
-
-      // Send game state to all players in the session
-      io.to(targetSession.id).emit('gameState', {
-        gameState: 'lobby',
-        players: targetSession.players,
-        currentQuestion: null,
-        questionNumber: 0,
-        totalQuestions: QUESTIONS_PER_GAME,
-        timeLimit: 0,
-        timeRemaining: 0,
-        lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - targetSession.lobbyStartTime) / 1000)),
-        results: []
-      });
     } else {
       socket.emit('error', 'SERVER_BUSY');
     }
@@ -626,41 +799,6 @@ io.on('connection', (socket) => {
       }
     }
   });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-    networkMonitor.stopMonitoring(socket.id);
-    
-    // Remove player from their session
-    for (const [sessionId, session] of sessions) {
-      const playerIndex = session.players.findIndex(p => p.id === socket.id);
-      if (playerIndex !== -1) {
-        session.players.splice(playerIndex, 1);
-        
-        // If no players left, remove the session
-        if (session.players.length === 0) {
-          sessions.delete(sessionId);
-          if (session.lobbyTimer) {
-            clearTimeout(session.lobbyTimer);
-          }
-        } else {
-          // Update remaining players
-          io.to(sessionId).emit('gameState', {
-            gameState: session.status,
-            players: session.players,
-            currentQuestion: session.currentQuestionIndex >= 0 ? session.questions[session.currentQuestionIndex] : null,
-            questionNumber: session.currentQuestionIndex + 1,
-            totalQuestions: QUESTIONS_PER_GAME,
-            timeLimit: session.currentQuestionIndex >= 0 ? calculateAdaptiveTimer(sessionId) : 0,
-            timeRemaining: session.currentQuestionIndex >= 0 ? session.questionEndTime - Date.now() : 0,
-            lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - session.lobbyStartTime) / 1000)),
-            results: []
-          });
-        }
-        break;
-      }
-    }
-  });
 });
 
 // Error handling
@@ -684,4 +822,10 @@ process.on('SIGTERM', () => {
     console.log('Server closed');
     process.exit(0);
   });
+});
+
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  isServerRunning = true;
 }); 

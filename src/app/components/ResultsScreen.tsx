@@ -4,9 +4,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useGame } from '../context/GameContext';
 import Confetti from './Confetti';
+import { useWebRTC } from '../context/WebRTCContext';
 
 const ResultsScreen: React.FC = () => {
   const { gameState, player, disconnect } = useGame();
+  const { cleanup: cleanupWebRTC } = useWebRTC();
   const [showConfetti, setShowConfetti] = React.useState(false);
 
   React.useEffect(() => {
@@ -25,6 +27,11 @@ const ResultsScreen: React.FC = () => {
   const getPlayerName = (playerId: string) => {
     const foundPlayer = gameState.players.find(p => p.id === playerId);
     return foundPlayer?.name || 'Unknown Player';
+  };
+
+  const handlePlayAgain = () => {
+    cleanupWebRTC(); // Ensure all camera/mic resources are released
+    disconnect();
   };
 
   return (
@@ -134,7 +141,7 @@ const ResultsScreen: React.FC = () => {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={disconnect}
+          onClick={handlePlayAgain}
           className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
         >
           Play Again

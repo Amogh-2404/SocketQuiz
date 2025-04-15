@@ -7,7 +7,8 @@ class NetworkMonitor {
       poor: 500     // ms
     };
     this.maxPingHistory = 5;
-    this.pingInterval = 5000; // ms
+    this.pingInterval = 10000; // ms
+    this.missedPingTolerance = 3;
     console.log('NetworkMonitor initialized');
   }
 
@@ -25,30 +26,46 @@ class NetworkMonitor {
         lastPing: Date.now(),
         health: 'good',
         pings: [],
-        pingInterval: null
+        pingInterval: null,
+        missedPings: 0
       });
 
-      // Send initial ping
-      this.sendPing(socket);
+      // Send initial ping with a small delay to ensure socket is ready
+      setTimeout(() => {
+        if (this.connections.has(socket.id)) {
+          this.sendPing(socket);
+        }
+      }, 1000);
     } catch (error) {
       console.error('Error in startMonitoring:', error);
     }
   }
 
   // Stop monitoring a connection
-  stopMonitoring(socket) {
+  stopMonitoring(socketIdOrObject) {
     try {
-      if (!socket || !socket.id) {
-        console.error('Invalid socket provided to stopMonitoring');
+      let socketId;
+      
+      // Handle both socket object and socket ID string
+      if (typeof socketIdOrObject === 'object' && socketIdOrObject !== null) {
+        if (!socketIdOrObject.id) {
+          console.error('Invalid socket provided to stopMonitoring');
+          return;
+        }
+        socketId = socketIdOrObject.id;
+      } else if (typeof socketIdOrObject === 'string') {
+        socketId = socketIdOrObject;
+      } else {
+        console.error('Invalid argument provided to stopMonitoring');
         return;
       }
 
-      console.log(`Stopping network monitoring for socket ${socket.id}`);
-      const connection = this.connections.get(socket.id);
+      console.log(`Stopping network monitoring for socket ${socketId}`);
+      const connection = this.connections.get(socketId);
       if (connection && connection.pingInterval) {
         clearInterval(connection.pingInterval);
       }
-      this.connections.delete(socket.id);
+      this.connections.delete(socketId);
     } catch (error) {
       console.error('Error in stopMonitoring:', error);
     }
@@ -57,13 +74,41 @@ class NetworkMonitor {
   // Send ping to measure latency
   sendPing(socket) {
     try {
-      if (!socket || !socket.id || !this.connections.has(socket.id)) {
-        console.error('Invalid socket or unmonitored socket in sendPing');
+      if (!socket || !socket.id) {
+        console.error('Invalid socket in sendPing');
+        return;
+      }
+      
+      // Check if socket is still being monitored
+      if (!this.connections.has(socket.id)) {
+        console.warn(`Socket ${socket.id} is no longer monitored`);
+        return;
+      }
+
+      // Try to handle disconnections more gracefully
+      if (!socket.connected) {
+        const connection = this.connections.get(socket.id);
+        if (connection) {
+          connection.missedPings++;
+          
+          if (connection.missedPings > this.missedPingTolerance) {
+            console.warn(`Socket ${socket.id} has missed ${connection.missedPings} pings, stopping monitoring`);
+            this.stopMonitoring(socket.id);
+            return;
+          }
+        }
         return;
       }
 
       const startTime = Date.now();
-      socket.emit('ping', { timestamp: startTime });
+      
+      // Using a try/catch for emit to handle any potential errors
+      try {
+        socket.emit('ping', { timestamp: startTime });
+      } catch (err) {
+        console.error(`Error sending ping to socket ${socket.id}:`, err.message);
+        return;
+      }
       
       // Schedule next ping
       const connection = this.connections.get(socket.id);

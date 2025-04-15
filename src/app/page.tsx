@@ -1,5 +1,14 @@
 'use client';
 
+// Add a console message at the top level to help with debugging
+console.log('==========================================');
+console.log('QuizSocket App Loading');
+console.log('If you\'re having issues with blank video boxes:');
+console.log('1. Make sure your camera/mic permissions are enabled');
+console.log('2. Try clicking the restart button in the top-right');
+console.log('3. Check browser console for any error messages');
+console.log('==========================================');
+
 import React from 'react';
 import { useGame } from './context/GameContext';
 import SplashScreen from './components/SplashScreen';
