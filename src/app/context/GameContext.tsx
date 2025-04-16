@@ -14,6 +14,7 @@ export interface GameState {
   timeRemaining: number;
   lobbyTimeRemaining: number;
   results: any[];
+  errorMessage?: string;
 }
 
 import { Player, Question, GameStateType } from '../types';
