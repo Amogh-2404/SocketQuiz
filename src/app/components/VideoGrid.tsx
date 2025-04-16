@@ -205,7 +205,7 @@ const VideoGrid: React.FC = () => {
   // Glassmorphic floating panel
   return (
     <div
-      className={`fixed bottom-0 right-0 m-6 z-50 transition-all duration-300 ${collapsed ? 'h-16 w-48' : 'min-w-[320px] min-h-[180px] max-w-[480px] max-h-[320px]'} flex flex-col items-end`}
+      className={`fixed bottom-0 left-0 m-6 z-50 transition-all duration-300 ${collapsed ? 'h-16 w-48' : 'min-w-[320px] min-h-[180px] max-w-[480px] max-h-[320px]'} flex flex-col items-start`}
       style={{ pointerEvents: 'auto' }}
     >
       <div
