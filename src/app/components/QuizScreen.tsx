@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useGame } from '../context/GameContext';
 import Timer from './Timer';
 
+
 const QuizScreen: React.FC = () => {
   const { gameState, player, submitAnswer, disconnect } = useGame();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -69,7 +70,8 @@ const QuizScreen: React.FC = () => {
   const isAnswerRevealed = currentQuestion.correctOption !== undefined;
 
   return (
-    <motion.div
+    <>
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -182,6 +184,8 @@ const QuizScreen: React.FC = () => {
         </motion.div>
       </motion.div>
     </motion.div>
+
+    </>
   );
 };
 

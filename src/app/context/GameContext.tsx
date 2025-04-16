@@ -2,7 +2,22 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { GameState, Player, Question, GameStateType } from '../types';
+// Extend GameState type to include sessionId for video signaling
+export interface GameState {
+  sessionId: string;
+  gameState: string;
+  players: Player[];
+  currentQuestion: Question | null;
+  questionNumber: number;
+  totalQuestions: number;
+  timeLimit: number;
+  timeRemaining: number;
+  lobbyTimeRemaining: number;
+  results: any[];
+  errorMessage?: string;
+}
+
+import { Player, Question, GameStateType } from '../types';
 
 // Interface for question event data
 interface QuestionEventData {
@@ -41,6 +56,7 @@ interface NetworkStats {
 }
 
 const initialGameState: GameState = {
+  sessionId: '',
   gameState: 'idle',
   players: [],
   currentQuestion: null,
