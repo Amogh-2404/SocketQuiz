@@ -167,7 +167,25 @@ const VideoGrid: React.FC = () => {
       return !m;
     });
   };
-  const toggleCamera = () => setCameraOn((c) => !c);
+  const toggleCamera = () => {
+    setCameraOn((c) => {
+      const newCameraOn = !c;
+      setTimeout(() => {
+        // Wait for localStream to update
+        if (localStream) {
+          Object.values(peersRef.current).forEach((peer: any) => {
+            // SimplePeer exposes _pc for the underlying RTCPeerConnection
+            const sender = peer._pc?.getSenders?.().find((s: any) => s.track && s.track.kind === 'video');
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (sender && videoTrack) {
+              sender.replaceTrack(videoTrack);
+            }
+          });
+        }
+      }, 300); // Wait for localStream update
+      return newCameraOn;
+    });
+  };
 
   // Helper to get player name by peerId
   const getPlayerName = (peerId: string) => {
