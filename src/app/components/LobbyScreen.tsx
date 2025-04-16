@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useGame } from '../context/GameContext';
 import Timer from './Timer';
 
+
 const LobbyScreen: React.FC = () => {
   const { gameState, player, setReady, disconnect } = useGame();
   const [lobbyTimeRemaining, setLobbyTimeRemaining] = React.useState(15);
@@ -20,12 +21,13 @@ const LobbyScreen: React.FC = () => {
   }, [gameState.gameState]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="flex flex-col items-center justify-center min-h-screen p-4 relative"
-    >
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="flex flex-col items-center justify-center min-h-screen p-4 relative"
+      >
       <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-full blur-3xl"></div>
       
       <motion.div 
@@ -91,6 +93,8 @@ const LobbyScreen: React.FC = () => {
         </div>
       </motion.div>
     </motion.div>
+
+    </>
   );
 };
 

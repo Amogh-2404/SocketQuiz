@@ -288,6 +288,7 @@ function startGame(sessionId) {
   
   // Notify all players
   io.to(sessionId).emit('gameState', {
+  sessionId: sessionId,
     gameState: 'playing',
     players: session.players,
     currentQuestion: null,
@@ -539,6 +540,26 @@ io.on('connection', (socket) => {
     return false;
   }
 
+  // --- WebRTC Video Signaling Events ---
+  // Relay video-offer, video-answer, video-ice-candidate, video-peer-join, video-peer-leave
+  socket.on('video-offer', ({ to, from, sdp }) => {
+    io.to(to).emit('video-offer', { from, sdp });
+  });
+  socket.on('video-answer', ({ to, from, sdp }) => {
+    io.to(to).emit('video-answer', { from, sdp });
+  });
+  socket.on('video-ice-candidate', ({ to, from, candidate }) => {
+    io.to(to).emit('video-ice-candidate', { from, candidate });
+  });
+  socket.on('video-peer-join', ({ sessionId, peerId }) => {
+    // Notify all peers in the session except the joining peer
+    socket.to(sessionId).emit('video-peer-join', { peerId });
+  });
+  socket.on('video-peer-leave', ({ sessionId, peerId }) => {
+    // Notify all peers in the session except the leaving peer
+    socket.to(sessionId).emit('video-peer-leave', { peerId });
+  });
+
   // Handle player ready state
   socket.on('ready', () => {
     // Find the session the player is in
@@ -555,6 +576,7 @@ io.on('connection', (socket) => {
 
         // Update all players
         io.to(sessionId).emit('gameState', {
+  sessionId: sessionId,
           gameState: 'lobby',
           players: session.players,
           currentQuestion: null,
@@ -628,6 +650,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    // On disconnect, notify peers in the same session
+    for (const [sessionId, session] of sessions) {
+      if (session.players.some(p => p.id === socket.id)) {
+        socket.to(sessionId).emit('video-peer-leave', { peerId: socket.id });
+        break;
+      }
+    }
     console.log('Client disconnected:', socket.id);
     networkMonitor.stopMonitoring(socket.id);
     
@@ -646,6 +675,7 @@ io.on('connection', (socket) => {
         } else {
           // Update remaining players
           io.to(sessionId).emit('gameState', {
+  sessionId: sessionId,
             gameState: session.status,
             players: session.players,
             currentQuestion: session.currentQuestionIndex >= 0 ? session.questions[session.currentQuestionIndex] : null,
