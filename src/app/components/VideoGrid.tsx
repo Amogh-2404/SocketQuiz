@@ -19,7 +19,7 @@ interface PeerStream {
 import { MicrophoneIcon, VideoCameraIcon, VideoCameraSlashIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 
 const VideoGrid: React.FC = () => {
-  const { socket, gameState, player } = useGame();
+  const { socket, gameState, player, mode } = useGame();
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [peerStreams, setPeerStreams] = useState<PeerStream[]>([]);
   const [muted, setMuted] = useState(false);
@@ -44,26 +44,38 @@ const VideoGrid: React.FC = () => {
     setPeerStreams([]);
   };
 
-  // Get user media
+  // Manage user media only in conference mode; clean up on unmount or mode change
   useEffect(() => {
     let ignore = false;
+    let streamRef: MediaStream | null = null;
+    if (mode !== "conference") {
+      return () => {
+        ignore = true;
+        if (streamRef) streamRef.getTracks().forEach((t) => t.stop());
+        setLocalStream(null);
+      };
+    }
     navigator.mediaDevices
       .getUserMedia({ video: cameraOn, audio: true })
       .then((stream) => {
-        if (ignore) return;
+        if (ignore) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef = stream;
         setLocalStream(stream);
         if (muted) {
           stream.getAudioTracks().forEach((t) => (t.enabled = false));
         }
       })
       .catch(() => {
-        setLocalStream(null);
+        if (!ignore) setLocalStream(null);
       });
     return () => {
       ignore = true;
+      if (streamRef) streamRef.getTracks().forEach((t) => t.stop());
     };
-    // eslint-disable-next-line
-  }, [cameraOn, muted]);
+  }, [mode, cameraOn, muted]);
 
   // Handle peer connections
   useEffect(() => {
@@ -118,6 +130,15 @@ const VideoGrid: React.FC = () => {
         initiator,
         trickle: true,
         stream: localStream,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ],
+          iceTransportPolicy: 'all',
+          bundlePolicy: 'max-bundle',
+          rtcpMuxPolicy: 'require'
+        }
       });
       peer.on("signal", (data: any) => {
         if (data.type === "offer") {

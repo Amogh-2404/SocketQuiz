@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useGame } from '../context/GameContext';
 import Timer from './Timer';
@@ -10,6 +10,7 @@ const QuizScreen: React.FC = () => {
   const { gameState, player, submitAnswer, disconnect } = useGame();
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [showLeaderboard, setShowLeaderboard] = useState<boolean>(true);
 
   const currentQuestion = gameState.currentQuestion;
   const questionNumber = gameState.questionNumber;
@@ -171,6 +172,37 @@ const QuizScreen: React.FC = () => {
           })}
         </div>
 
+        {/* Collapsible Leaderboard (top 3 players) */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="mt-4 max-w-md mx-auto bg-white/10 backdrop-blur-sm dark:bg-gray-800/50 p-4 rounded-lg shadow-inner"
+        >
+          <div
+            className="flex justify-between items-center cursor-pointer"
+            onClick={() => setShowLeaderboard(!showLeaderboard)}
+          >
+            <h3 className="text-lg font-semibold text-white">Leaderboard</h3>
+            <span className="text-white font-bold text-xl">
+              {showLeaderboard ? '▾' : '▸'}
+            </span>
+          </div>
+          {showLeaderboard && (
+            <ul className="mt-2 space-y-1 text-white">
+              {[...gameState.players]
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 3)
+                .map((p, idx) => (
+                  <li key={p.id} className="flex justify-between">
+                    <span>{idx + 1}. {p.name}</span>
+                    <span className="font-semibold text-purple-300">{p.score}</span>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </motion.div>
+
         {/* Score Display */}
         <motion.div 
           initial={{ opacity: 0 }}
@@ -182,6 +214,7 @@ const QuizScreen: React.FC = () => {
             Your Score: <span className="text-purple-300">{player?.score || 0}</span>
           </span>
         </motion.div>
+
       </motion.div>
     </motion.div>
 
