@@ -6,197 +6,467 @@
 ![Socket.io](https://img.shields.io/badge/Socket.io-4.6-white)
 ![Framer Motion](https://img.shields.io/badge/Framer%20Motion-10.16-ff69b4)
 
-A real-time, multiplayer quiz application featuring synchronized gameplay, adaptive timers, and stunning visual effects.
+> 🎉 **Dynamic Quiz Show** is a real-time, multiplayer quiz game built with modern web technologies. Players can join synchronized sessions, answer time-based questions, and compete for the highest score—all with stunning animations and adaptive networking features.
 
-## 🌟 Overview
+---
 
-Dynamic Quiz Show is a sophisticated web-based multiplayer quiz game where players compete in real-time to answer questions. The application combines cutting-edge frontend animations with robust backend socket programming to deliver a seamless, engaging user experience.
+## 📖 Table of Contents
 
-Players join synchronized sessions, complete with lobby waiting rooms, precisely timed question rounds, and dramatic results screens that celebrate winners with visual flourishes.
+1. [🚀 Overview](#-overview)
+2. [🎬 Demo](#-demo)
+3. [🛠️ Tech Stack](#️-tech-stack)
+4. [🔧 Prerequisites](#-prerequisites)
+5. [⚙️ Setup & Installation](#️-setup--installation)
+6. [🔑 Environment Variables](#-environment-variables)
+7. [📂 Project Structure](#-project-structure)
+8. [🖥️ Frontend Guide](#️-frontend-guide)
+9. [🔌 Backend Guide](#-backend-guide)
+10. [🧠 How It Works (Flow)](#-how-it-works-flow)
+11. [📜 Available Scripts](#-available-scripts)
+12. [🛠️ Development vs Production](#️-development-vs-production)
+13. [✅ Testing](#-testing)
+14. [☁️ Deployment](#-deployment)
+15. [❓ Troubleshooting & FAQ](#-troubleshooting--faq)
+16. [🤝 Contributing](#-contributing)
+17. [📄 License](#-license)
+18. [🙏 Acknowledgements](#-acknowledgements)
 
-## ✨ Key Features
+---
 
-### 🎮 Gameplay
+## 🚀 Overview
 
-- **Real-time Multiplayer**: Compete with players worldwide in synchronized quiz sessions
-- **Dynamic Session Formation**: Join existing lobbies or create new ones automatically
-- **Synchronized Timers**: All players experience identical question timing
-- **Adaptive Question Timing**: Question duration adjusts based on network conditions (10-20 seconds)
-- **Instant Feedback**: See correct answers immediately after each question
-- **Animated Results**: Celebratory effects for winners with dramatic scoring reveals
+**Dynamic Quiz Show** is a web-based quiz platform where multiple players can join a live session, answer questions in sync, and see real-time score updates. Built with Next.js, Socket.io, and Framer Motion, it combines a responsive UI, smooth animations, and robust server logic to ensure a seamless experience—even over varying network conditions.
 
-### 🎭 User Experience
+**Key Concepts:**
+- **Real-time Communication:** Leveraging WebSockets for low-latency data exchange.
+- **Session Management:** Automatic lobby creation, player assignment, and maximum concurrent sessions.
+- **Adaptive Timing:** Question timers adjust based on measured network latency.
+- **Animated Feedback:** Instant answer validation and celebratory result screens.
 
-- **Stunning Visual Design**: Modern glassmorphism effects with gradient backgrounds
-- **Fluid Animations**: Powered by Framer Motion for seamless transitions between game states
-- **Responsive Layout**: Optimized for both desktop and mobile experiences
-- **Dark Mode Support**: Beautiful design in both light and dark themes
-- **Interactive Elements**: Dynamic hover and click effects throughout the interface
+---
 
-### 🔧 Technical Features
+## 🎬 Demo
 
-- **Network Performance Monitoring**: Real-time latency and packet loss tracking
-- **Adaptive Timer System**: Question timing adjusts based on network conditions
-- **Session Management**: Maximum 3 concurrent game sessions
-- **Connection Recovery**: Handling of disconnections with game state persistence
-- **Server Health Indicators**: Visual feedback on network conditions
-- **Session Synchronization**: All players see identical game states
+See it in action:
 
-## 🛠️ Technology Stack
+![Quiz Demo](./public/images/demo.gif)
 
-- **Frontend**:
-  - [Next.js](https://nextjs.org/) - React framework
-  - [TypeScript](https://www.typescriptlang.org/) - Type safety
-  - [Framer Motion](https://www.framer.com/motion/) - Advanced animations
-  - [TailwindCSS](https://tailwindcss.com/) - Utility-first CSS
-  - [Socket.io Client](https://socket.io/docs/v4/client-api/) - Real-time communication
+Live Preview: [http://localhost:3000](http://localhost:3000)
 
-- **Backend**:
-  - [Node.js](https://nodejs.org/) - JavaScript runtime
-  - [Express](https://expressjs.com/) - Web framework
-  - [Socket.io](https://socket.io/) - WebSocket implementation
-  - Custom network monitoring and session management
+---
 
-## 📋 Installation
+## 🛠️ Tech Stack
 
-### Prerequisites
+**Frontend**
+- Next.js 14 (React + SSR)
+- TypeScript (type safety)
+- Tailwind CSS (utility-first styling)
+- Framer Motion (animation library)
+- Socket.io Client (real-time communication)
 
-- Node.js (v18+)
-- npm (v9+)
+**Backend**
+- Node.js 18+ (JavaScript runtime)
+- Express.js (HTTP server)
+- Socket.io Server (WebSocket abstraction)
+- Custom modules: session manager, network monitor, question provider
 
-### Setup
+---
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/dynamic-quiz-show.git
-   cd dynamic-quiz-show
-   ```
+## 🔧 Prerequisites
 
-2. Install dependencies:
-   ```bash
-   # Install frontend dependencies
-   cd quiz-show
-   npm install
+Before you begin, ensure you have:
 
-   # Install server dependencies
-   cd ../socket-server
-   npm install
-   ```
+- **Node.js** v18 or higher
+- **npm** v9 or higher (or **yarn** if preferred)
 
-3. Environment Setup:
-   Create a `.env.local` file in the `quiz-show` directory:
-   ```
-   NEXT_PUBLIC_SERVER_URL=http://localhost:5001
-   ```
-
-## 🚀 Running the Application
-
-### Start the Socket Server:
+Confirm your versions:
 
 ```bash
-cd socket-server
+node -v  # should be v18+
+npm -v   # should be v9+
+```
+
+---
+
+## ⚙️ Setup & Installation
+
+Follow these steps to get the project running locally.
+
+1. **Clone the repository**
+   ```bash
+git clone https://github.com/yourusername/dynamic-quiz-show.git
+cd dynamic-quiz-show
+```
+
+2. **Install dependencies**
+   - **Frontend**
+     ```bash
+cd quiz-show
+npm install
+```
+   - **Backend**
+     ```bash
+cd server
+npm install
+```
+
+3. **Configure environment variables**
+   See [Environment Variables](#-environment-variables).
+
+4. **Start the servers**
+   - **Backend (Socket Server)**
+     ```bash
+cd server
 npm start
 ```
+     - Runs on `http://localhost:5001` by default.
 
-The server will run on port 5001 by default.
-
-### Start the Next.js Frontend:
-
-```bash
-cd quiz-show
+   - **Frontend (Next.js)**
+     ```bash
+cd ../quiz-show
 npm run dev
 ```
+     - Opens at `http://localhost:3000`.
 
-The application will be available at `http://localhost:3000`.
+---
 
-## 🏗️ Architecture
+## 🔑 Environment Variables
 
-The Dynamic Quiz Show uses a client-server architecture:
+Configure runtime behavior using these variables.
 
-### Client Architecture:
+### Frontend (`quiz-show/.env.local`)
+```
+NEXT_PUBLIC_SERVER_URL=http://localhost:5001
+```
+- **NEXT_PUBLIC_SERVER_URL**: URL where the Socket server is running.
+
+### Backend (`server/.env`)
+```
+PORT=5001
+QUESTION_BANK_PATH=./data/questions.json
+MAX_SESSIONS=3
+```
+- **PORT**: Port for the Express + Socket.io server.
+- **QUESTION_BANK_PATH**: Path to JSON file containing quiz questions.
+- **MAX_SESSIONS**: Maximum number of concurrent quiz sessions.
+
+---
+
+## 📂 Project Structure
+
+A high-level look at folders and important files:
 
 ```
-┌───────────┐      ┌───────────┐      ┌───────────┐
-│  SplashScreen   │ ──→ │ LobbyScreen  │ ──→ │ QuizScreen   │
-└───────────┘      └───────────┘      └───────────┘
-                                            │
-                                            ↓
-                                      ┌───────────┐
-                                      │ResultsScreen│
-                                      └───────────┘
+quiz-show/
+├── README.md             # This guide
+├── public/               # Static assets (images, fonts, icons)
+│   └── images/           # Demo GIF, logos
+├── src/                  # Frontend code
+│   ├── pages/            # Next.js page components
+│   │   ├── index.tsx     # Splash (entry) page
+│   │   ├── lobby.tsx     # Lobby interface
+│   │   ├── quiz.tsx      # Quiz interface
+│   │   └── results.tsx   # Results screen
+│   ├── components/       # Reusable UI components
+│   ├── hooks/            # Custom hooks (socket, timer)
+│   ├── lib/              # Utility modules (socket config, timer logic)
+│   └── styles/           # Global CSS & Tailwind config imports
+├── server/               # Backend server code
+│   ├── index.js          # Express + Socket.io initialization
+│   ├── events.js         # List of socket event names & handlers
+│   ├── sessionManager.js # Create/track game sessions & lobbies
+│   ├── networkMonitor.js # Measure latency & packet loss
+│   ├── questionProvider.js # Load questions & pick random set
+│   └── data/             # `questions.json` question bank
+├── test-server.js        # Local test harness for socket events
+├── tailwind.config.js    # Tailwind CSS configuration
+├── next.config.js        # Next.js customization
+├── package.json          # Project scripts & dependencies
+└── tsconfig.json         # TypeScript compiler options
 ```
 
-### Server Architecture:
+Each folder is intentionally organized to separate concerns and improve maintainability.
 
+---
+
+## 🖥️ Frontend Guide
+
+This section dives deeper into the key frontend areas for developers.
+
+### `src/pages`
+
+- **`index.tsx`**:
+  - **Purpose**: Landing page where user enters their name and clicks "Join Game".
+  - **Key Features**:
+    - Controlled input for username.
+    - `useSocket` hook invocation.
+    - Navigation to `/lobby` on successful join.
+
+- **`lobby.tsx`**:
+  - **Purpose**: Show current players, a countdown to game start, and a "Ready" button.
+  - **Key Hooks/Components**:
+    - `useSocket` for listening to `LOBBY_UPDATE`.
+    - `<PlayerList />` and `<Timer />` components for UI.
+
+- **`quiz.tsx`**:
+  - **Purpose**: Display one question at a time with multiple-choice answers.
+  - **Logic**:
+    1. Receive `NEW_QUESTION` event payload → question text + answers.
+    2. Start countdown via `useTimer` (uses network latency to adjust duration).
+    3. On answer click → emit `SUBMIT_ANSWER`.
+    4. Listen for `QUESTION_RESULT` to show correct answer and update score.
+
+- **`results.tsx`**:
+  - **Purpose**: Show final scores, ranking animation, and "Play Again" button.
+  - **Components**:
+    - `<ResultModal />`: Highlights winner with Framer Motion effects.
+
+### `src/components`
+
+Reusable components to keep code DRY:
+
+| Component      | Description                                         |
+| -------------- | --------------------------------------------------- |
+| `Header`       | Common header with title and connection indicator.  |
+| `Timer`        | Visual countdown bar with numeric display.          |
+| `QuestionCard` | Renders question text and clickable options.        |
+| `PlayerList`   | Shows list of players in lobby or quiz state.       |
+| `ResultModal`  | Animated modal for displaying results.              |
+
+### `src/hooks`
+
+- **`useSocket.ts`**:
+  - Initializes Socket.io client with URL from env.
+  - Handles auto-reconnect logic.
+  - Provides helper methods: `onEvent`, `emitEvent`.
+
+- **`useTimer.ts`**:
+  - Custom hook wrapping `setInterval` to track seconds left.
+  - Accepts base duration and latency adjustment.
+
+### `src/lib`
+
+- **`socket.ts`**: Single instance of `io()` client.
+- **`timer.ts`**: Functions to calculate adaptive timeouts based on ping.
+
+### Styles
+
+- **Tailwind CSS**: Utility classes are used in JSX (e.g., `bg-gradient-to-r`, `rounded-lg`).
+- **Dark Mode**: Configured in `tailwind.config.js` to support `dark:` variants.
+
+---
+
+## 🔌 Backend Guide
+
+Detailed breakdown of server-side modules.
+
+### `server/index.js`
+
+- Sets up an Express app and attaches a Socket.io server.
+- Reads `PORT` from process.env.
+- Serves a health-check endpoint at `/health`.
+
+### `server/events.js`
+
+Central definition of all socket event names (avoids typos):
+
+```js
+module.exports = {
+  JOIN_LOBBY: 'JOIN_LOBBY',
+  LOBBY_UPDATE: 'LOBBY_UPDATE',
+  START_GAME: 'START_GAME',
+  NEW_QUESTION: 'NEW_QUESTION',
+  SUBMIT_ANSWER: 'SUBMIT_ANSWER',
+  QUESTION_RESULT: 'QUESTION_RESULT',
+  GAME_OVER: 'GAME_OVER',
+};
 ```
-┌──────────────┐     ┌───────────┐     ┌───────────┐
-│ Socket Server │ ←→ │ Game Logic │ ←→ │ Session    │
-└──────────────┘     └───────────┘     │ Management │
-        ↑                               └───────────┘
-        │                                     ↑
-        │                                     │
-┌──────────────┐                       ┌───────────┐
-│ Network      │                       │ Question   │
-│ Monitoring   │ ←──────────────────→ │ Timer      │
-└──────────────┘                       └───────────┘
+
+### `server/sessionManager.js`
+
+- Manages `MAX_SESSIONS` concurrent games.
+- Each session tracks:
+  - **Players**: array of `{ id, name, socket }`.
+  - **Lobby Timer**: 15s countdown after first join.
+  - **Game State**: current question index, scores.
+- Lifecycle:
+  1. Player emits `JOIN_LOBBY` → new session or existing with space.
+  2. When lobby timer expires or all ready → emit `START_GAME`.
+  3. Loop through `QUESTION_COUNT` questions:
+     - `emit NEW_QUESTION`
+     - Wait for answers or timeout
+     - Calculate results → `emit QUESTION_RESULT`
+  4. After final question → `emit GAME_OVER` + final rankings.
+
+### `server/networkMonitor.js`
+
+- Periodically pings clients via Socket.io's `ping` event.
+- Measures round-trip time to compute latency.
+- Tracks missed pings for packet loss.
+- Exports functions for other modules to query average latency.
+
+### `server/questionProvider.js`
+
+- On startup, loads `questions.json` into memory.
+- Exposes `getRandomQuestions(count)` to pick `count` unique items.
+- Ensures no repeat questions within the same session.
+
+### `test-server.js`
+
+A standalone script to emit and listen to socket events without a frontend:
+
+```bash
+node test-server.js
 ```
 
-## 🎮 Gameplay Flow
+Use it for automated testing of server logic.
 
-1. **Joining a Game**:
-   - Player enters their name and clicks "Join Game"
-   - Server assigns player to an existing lobby or creates a new one
-   - A 15-second lobby timer starts when the first player joins
+---
 
-2. **Lobby Phase**:
-   - Players can see others joining in real-time
-   - All players must ready up before the game starts
-   - Game automatically starts when the lobby timer expires
+## 🧠 How It Works (Flow)
 
-3. **Quiz Phase**:
-   - Each game consists of 10 questions randomly selected from a bank of 100
-   - Questions are synchronized for all players
-   - All players have the same amount of time to answer each question
-   - Points are awarded for correct answers
+1. **Client Connects**
+   - `useSocket` connects to `NEXT_PUBLIC_SERVER_URL`.
+   - On success, emits `JOIN_LOBBY` with `{ name }`.
 
-4. **Results Phase**:
-   - Players are ranked based on their total scores
-   - Winner receives special visual celebration effects
-   - Players can view complete rankings and scores
-   - Option to play again or quit is provided
+2. **Lobby Phase**
+   - Server groups players into sessions (max 3 concurrent).
+   - Emits `LOBBY_UPDATE` every second with:
+     ```json
+     {
+       sessionId,
+       players: [ { id, name } ],
+       timeRemaining: 10
+     }
+     ```
+   - When `timeRemaining === 0` → `START_GAME`.
 
-## 🌐 Network Features
+3. **Quiz Phase**
+   - Server sends `NEW_QUESTION`:
+     ```json
+     { question: "Text", choices: ["A","B","C","D"], questionNumber: 1 }
+     ```
+   - Clients start timer via `useTimer(adjustedDuration)`.
+   - On answer click → client emits `SUBMIT_ANSWER`:
+     ```json
+     { sessionId, questionNumber, selectedChoice }
+     ```
+   - After timer or all answers → server computes correctness & updates scores.
+   - Broadcasts `QUESTION_RESULT`:
+     ```json
+     { correctChoice, scores: [ { id, score } ] }
+     ```
 
-### Performance Monitoring
+4. **Results Phase**
+   - After last question, server emits `GAME_OVER`:
+     ```json
+     { finalRankings: [ { id, name, score } ] }
+     ```
+   - Frontend navigates to `/results` and shows animations.
 
-- Real-time latency monitoring displayed as a colored dot in the corner:
-  - 🟢 Green: Good connection (<100ms)
-  - 🟡 Yellow: Fair connection (100-300ms)
-  - 🔴 Red: Poor connection (>300ms)
+---
 
-- Packet loss tracking
-- Adaptive question timing based on average network conditions
+## 📜 Available Scripts
 
-### Server Health
+### Frontend (`quiz-show`)
+| Command         | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `npm run dev`   | Launches Next.js dev server (hot reload)        |
+| `npm run build` | Builds for production                          |
+| `npm start`     | Starts production server (`next start`)         |
+| `npm run lint`  | Runs ESLint checks                              |
 
-- Maximum 3 concurrent game sessions
-- Elegant "Server Busy" modal when all sessions are full
-- Session persistence for handling disconnects and reconnects
+### Backend (`server`)
+| Command         | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `npm run dev`   | Starts server with nodemon for auto-reload      |
+| `npm start`     | Launches production server                      |
+| `npm run lint`  | Runs ESLint (if configured)                     |
 
-## 🔮 Future Enhancements
+---
 
-- **Spectator Mode**: Allow users to watch ongoing games
-- **Custom Rooms**: Let users create private rooms with custom settings
-- **Additional Question Types**: Support for images, audio, and video questions
-- **User Profiles**: Persistent profiles with statistics and achievements
-- **Custom Themes**: User-selectable visual themes
-- **Question Categories**: Specialized topic categories for targeted quizzes
+## 🛠️ Development vs Production
 
-## 📜 License
+- **Development**:
+  - Use `.env.local` / `.env`
+  - Run `npm run dev` / `npm run dev`
+  - Hot reloading enabled
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+- **Production**:
+  - Build assets (`npm run build`)
+  - Serve with `npm start`
+  - Ensure environment variables are set on the server
+
+---
+
+## ✅ Testing
+
+> _Testing framework coming soon!_
+
+- You can simulate game flows via `test-server.js`.
+- Future: Add Jest for unit tests and Cypress for e2e.
+
+---
+
+## ☁️ Deployment
+
+1. **Frontend**:
+   - `npm run build`
+   - Deploy `.next` directory to Vercel or Netlify
+
+2. **Backend**:
+   - Set env vars (`PORT`, `QUESTION_BANK_PATH`, `MAX_SESSIONS`)
+   - `npm start` on a Node-hosting platform
+
+---
+
+## ❓ Troubleshooting & FAQ
+
+- **Socket fails to connect**:
+  - Verify `NEXT_PUBLIC_SERVER_URL` matches backend URL.
+  - Check CORS settings in `server/index.js`.
+
+- **Lobby never starts**:
+  - Confirm `MAX_SESSIONS` not exceeded.
+  - Inspect server logs for errors.
+
+- **Styling issues**:
+  - Ensure Tailwind classes are compiled.
+  - Run `npm run build` after changing `tailwind.config.js`.
+
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. **Fork** the repository.
+2. **Create** a new branch:
+   ```bash
+git checkout -b feature/YourFeature
+```
+3. **Commit** changes:
+   ```bash
+git commit -m "Add awesome feature"
+```
+4. **Push** and **open** a Pull Request.
+
+**Code Guidelines:**
+- Use TypeScript types for new code.
+- Add tests for new functionality.
+- Keep styles within `src/styles` or Tailwind classes.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**. See [LICENSE](../LICENSE) for details.
+
+---
 
 ## 🙏 Acknowledgements
 
-- Question database provided by [Open Trivia DB](https://opentdb.com/)
-- Design inspiration from modern UI trends and best practices
+- Questions provided by [Open Trivia DB](https://opentdb.com/)
+- Icons from [Feather Icons](https://feathericons.com/)
+- Animations powered by [Framer Motion](https://www.framer.com/motion/)
