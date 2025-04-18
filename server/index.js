@@ -105,7 +105,7 @@ const calculateAdaptiveTimer = (sessionId) => {
 const validateSession = (session) => {
   if (!session) return false;
   
-  const requiredFields = ['id', 'status', 'players', 'questions'];
+  const requiredFields = ['id', 'status', 'players', 'questions', 'mode'];
   for (const field of requiredFields) {
     if (!(field in session)) {
       console.error(`Missing required field in session: ${field}`);
@@ -461,11 +461,11 @@ io.on('connection', (socket) => {
   });
 
   // Handle player joining
-  socket.on('join', ({ name }) => {
+  socket.on('join', ({ name, mode }) => {
     console.log(`Player ${name} (${socket.id}) joining game`);
     
     // Check if we've reached the maximum number of sessions
-    if (sessions.size >= MAX_SESSIONS && !canPlayerJoinExistingSession()) {
+    if (sessions.size >= MAX_SESSIONS && !canPlayerJoinExistingSession(mode)) {
       socket.emit('error', 'SERVER_BUSY');
       return;
     }
@@ -473,7 +473,7 @@ io.on('connection', (socket) => {
     // Find an available session or create a new one
     let targetSession = null;
     for (const [sessionId, session] of sessions) {
-      if (session.status === 'lobby' && session.players.length < 4) {
+      if (session.status === 'lobby' && session.players.length < 4 && session.mode === mode) {
         targetSession = session;
         break;
       }
@@ -482,6 +482,7 @@ io.on('connection', (socket) => {
     if (!targetSession && canCreateNewSession()) {
       const sessionId = generateSessionId();
       targetSession = {
+        mode,
         id: sessionId,
         status: 'lobby',
         players: [],
@@ -531,9 +532,9 @@ io.on('connection', (socket) => {
   });
 
   // Helper function to check if player can join an existing session
-  function canPlayerJoinExistingSession() {
+  function canPlayerJoinExistingSession(mode) {
     for (const [sessionId, session] of sessions) {
-      if (session.status === 'lobby' && session.players.length < 4) {
+      if (session.status === 'lobby' && session.players.length < 4 && session.mode === mode) {
         return true;
       }
     }
@@ -577,13 +578,13 @@ io.on('connection', (socket) => {
         // Update all players
         io.to(sessionId).emit('gameState', {
   sessionId: sessionId,
-          gameState: 'lobby',
+          gameState: session.status,
           players: session.players,
-          currentQuestion: null,
-          questionNumber: 0,
+          currentQuestion: session.currentQuestionIndex >= 0 ? session.questions[session.currentQuestionIndex] : null,
+          questionNumber: session.currentQuestionIndex + 1,
           totalQuestions: QUESTIONS_PER_GAME,
-          timeLimit: 0,
-          timeRemaining: 0,
+          timeLimit: session.currentQuestionIndex >= 0 ? calculateAdaptiveTimer(sessionId) : 0,
+          timeRemaining: session.currentQuestionIndex >= 0 ? session.questionEndTime - Date.now() : 0,
           lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - session.lobbyStartTime) / 1000)),
           results: []
         });

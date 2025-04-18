@@ -7,10 +7,11 @@ import { useGame } from '../context/GameContext';
 const SplashScreen: React.FC = () => {
   const { connect } = useGame();
   const [playerName, setPlayerName] = React.useState('');
+  const [modeSelection, setModeSelection] = React.useState<'normal' | 'conference'>('normal');
 
   const handlePlay = () => {
     if (playerName.trim()) {
-      connect(playerName.trim());
+      connect(playerName.trim(), modeSelection);
     }
   };
 
@@ -64,6 +65,10 @@ const SplashScreen: React.FC = () => {
                      dark:focus:ring-blue-500/50 transition-all duration-300"
             whileFocus={{ scale: 1.02 }}
           />
+        </div>
+        <div className="flex justify-center mb-4 space-x-4">
+          <button onClick={() => setModeSelection('normal')} className={`px-4 py-2 rounded ${modeSelection === 'normal' ? 'bg-indigo-500 text-white' : 'bg-white/10 text-gray-200'}`}>Normal Mode</button>
+          <button onClick={() => setModeSelection('conference')} className={`px-4 py-2 rounded ${modeSelection === 'conference' ? 'bg-indigo-500 text-white' : 'bg-white/10 text-gray-200'}`}>Conference Mode</button>
         </div>
         <motion.button
           onClick={handlePlay}

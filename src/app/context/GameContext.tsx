@@ -72,7 +72,8 @@ interface GameContextType {
   socket: Socket | null;
   gameState: GameState;
   player: Player | null;
-  connect: (name: string) => void;
+  mode: 'normal' | 'conference';
+  connect: (name: string, mode: 'normal' | 'conference') => void;
   disconnect: () => void;
   setReady: () => void;
   submitAnswer: (answer: number) => void;
@@ -89,6 +90,7 @@ export const useGame = () => {
 };
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [mode, setMode] = useState<'normal' | 'conference'>('normal');
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [player, setPlayer] = useState<Player | null>(null);
@@ -101,12 +103,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [socket]);
 
-  const connect = (name: string) => {
+  const connect = (name: string, modeArg: 'normal' | 'conference') => {
+    setMode(modeArg);
     const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || 'http://localhost:5001');
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      newSocket.emit('join', { name });
+      newSocket.emit('join', { name, mode: modeArg });
       setGameState(prev => ({ ...prev, gameState: 'connecting' }));
     });
 
@@ -219,6 +222,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socket,
     gameState,
     player,
+    mode,
     connect,
     disconnect,
     setReady,
