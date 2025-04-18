@@ -118,6 +118,15 @@ const VideoGrid: React.FC = () => {
         initiator,
         trickle: true,
         stream: localStream,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ],
+          iceTransportPolicy: 'all',
+          bundlePolicy: 'max-bundle',
+          rtcpMuxPolicy: 'require'
+        }
       });
       peer.on("signal", (data: any) => {
         if (data.type === "offer") {
