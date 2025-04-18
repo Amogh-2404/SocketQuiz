@@ -8,17 +8,20 @@ import Timer from './Timer';
 
 const LobbyScreen: React.FC = () => {
   const { gameState, player, setReady, disconnect } = useGame();
-  const [lobbyTimeRemaining, setLobbyTimeRemaining] = React.useState(15);
+  const [lobbyTimeRemaining, setLobbyTimeRemaining] = React.useState(gameState.lobbyTimeRemaining);
 
+  // Manage lobby countdown, resetting when server emits new lobbyTimeRemaining
   React.useEffect(() => {
     if (gameState.gameState === 'lobby') {
+      // reset from server value
+      setLobbyTimeRemaining(gameState.lobbyTimeRemaining);
+      // start local countdown
       const timer = setInterval(() => {
-        setLobbyTimeRemaining((prev) => Math.max(0, prev - 1));
+        setLobbyTimeRemaining(prev => Math.max(0, prev - 1));
       }, 1000);
-
       return () => clearInterval(timer);
     }
-  }, [gameState.gameState]);
+  }, [gameState.lobbyTimeRemaining, gameState.gameState]);
 
   return (
     <>

@@ -78,27 +78,26 @@ const canCreateNewSession = () => {
 // Function to calculate adaptive question timer based on network conditions
 const calculateAdaptiveTimer = (sessionId) => {
   const session = sessions.get(sessionId);
-  if (!session) return BASE_QUESTION_TIMER;
-
-  // Get network stats for all players in the session
-  const networkStats = session.players.map(player => 
-    networkMonitor.getStats(player.id)
-  );
-
-  // Calculate average latency
-  const avgLatency = networkStats.reduce((sum, stats) => 
-    sum + (stats?.averageLatency || 0), 0
-  ) / networkStats.length;
-
-  // Adjust timer based on latency
-  if (avgLatency <= 100) return MIN_QUESTION_TIMER;
-  if (avgLatency >= 500) return MAX_QUESTION_TIMER;
-  
-  // Linear interpolation between min and max based on latency
-  const timer = MIN_QUESTION_TIMER + 
-    ((avgLatency - 100) / 400) * (MAX_QUESTION_TIMER - MIN_QUESTION_TIMER);
-  
-  return Math.round(timer);
+  if (!session) {
+    console.warn(`Adaptive timer: no session ${sessionId}, using base ${BASE_QUESTION_TIMER}s`);
+    return BASE_QUESTION_TIMER;
+  }
+  // Gather avg latency
+  const statsArr = session.players.map(p => networkMonitor.getStats(p.id));
+  const totalLatency = statsArr.reduce((sum, s) => sum + (s?.averageLatency || 0), 0);
+  const avgLatency = session.players.length > 0 ? totalLatency / session.players.length : 0;
+  let resultTime;
+  if (avgLatency <= 100) {
+    resultTime = MIN_QUESTION_TIMER;
+  } else if (avgLatency >= 500) {
+    resultTime = MAX_QUESTION_TIMER;
+  } else {
+    const fraction = (avgLatency - 100) / (500 - 100);
+    const timer = MIN_QUESTION_TIMER + fraction * (MAX_QUESTION_TIMER - MIN_QUESTION_TIMER);
+    resultTime = Math.round(timer);
+  }
+  console.log(`Adaptive timer for session ${sessionId}: ${resultTime}s (avgLatency ${avgLatency}ms)`);
+  return resultTime;
 };
 
 // Helper function to validate session data
@@ -266,10 +265,7 @@ function startLobbyTimer(sessionId) {
   
   // Set new timer
   session.lobbyTimer = setTimeout(() => {
-    // Start the game if we still have the session and at least one player
-    if (sessions.has(sessionId) && sessions.get(sessionId).players.length > 0) {
-      startGame(sessionId);
-    }
+    console.log(`Lobby timer expired for session ${sessionId}; awaiting all players to ready before starting.`);
   }, LOBBY_TIMER * 1000);
   
   // Log
@@ -326,6 +322,7 @@ function nextQuestion(sessionId) {
   session.questionEndTime = Date.now() + (questionTimeLimit * 1000);
   
   // Send the question to all players (without the correct answer)
+  console.log(`Emitting question ${session.currentQuestionIndex + 1} for session ${sessionId} with timeLimit ${questionTimeLimit}s`);
   const questionForPlayers = {
     id: currentQuestion.id,
     question: currentQuestion.question,
@@ -366,6 +363,7 @@ function nextQuestion(sessionId) {
   
   session.questionTimer = setTimeout(() => {
     // Time's up for this question, show the answer
+    console.log(`Question ${session.currentQuestionIndex + 1} timer expired, sending answer for session ${sessionId}`);
     const questionWithAnswer = {
       ...currentQuestion,
       correctOption: currentQuestion.correctOption
@@ -380,6 +378,7 @@ function nextQuestion(sessionId) {
     io.to(sessionId).emit('question-ended', { 
       question: questionWithAnswer
     });
+    console.log(`Emitted question-ended for question ${session.currentQuestionIndex + 1} in session ${sessionId}`);
     
     // Wait 3 seconds before moving to the next question
     setTimeout(() => {
@@ -464,6 +463,8 @@ io.on('connection', (socket) => {
   socket.on('join', ({ name, mode }) => {
     console.log(`Player ${name} (${socket.id}) joining game`);
     
+    const now = Date.now();
+
     // Check if we've reached the maximum number of sessions
     if (sessions.size >= MAX_SESSIONS && !canPlayerJoinExistingSession(mode)) {
       socket.emit('error', 'SERVER_BUSY');
@@ -473,7 +474,7 @@ io.on('connection', (socket) => {
     // Find an available session or create a new one
     let targetSession = null;
     for (const [sessionId, session] of sessions) {
-      if (session.status === 'lobby' && session.players.length < 4 && session.mode === mode) {
+      if (session.status === 'lobby' && session.players.length < 4 && session.mode === mode && (now - session.lobbyStartTime) <= LOBBY_TIMER * 1000) {
         targetSession = session;
         break;
       }
@@ -516,6 +517,7 @@ io.on('connection', (socket) => {
 
       // Send game state to all players in the session
       io.to(targetSession.id).emit('gameState', {
+        sessionId: targetSession.id,
         gameState: 'lobby',
         players: targetSession.players,
         currentQuestion: null,
@@ -533,8 +535,9 @@ io.on('connection', (socket) => {
 
   // Helper function to check if player can join an existing session
   function canPlayerJoinExistingSession(mode) {
+    const now = Date.now();
     for (const [sessionId, session] of sessions) {
-      if (session.status === 'lobby' && session.players.length < 4 && session.mode === mode) {
+      if (session.status === 'lobby' && session.players.length < 4 && session.mode === mode && (now - session.lobbyStartTime) <= LOBBY_TIMER * 1000) {
         return true;
       }
     }
@@ -572,22 +575,23 @@ io.on('connection', (socket) => {
         // Check if all players are ready
         const allReady = session.players.every(p => p.isReady);
         if (allReady && session.players.length > 1) {
+          if (session.lobbyTimer) clearTimeout(session.lobbyTimer);
           startGame(sessionId);
-        }
-
-        // Update all players
-        io.to(sessionId).emit('gameState', {
+        } else {
+          // Emit updated lobby state (no correctOption)
+          io.to(sessionId).emit('gameState', {
   sessionId: sessionId,
-          gameState: session.status,
-          players: session.players,
-          currentQuestion: session.currentQuestionIndex >= 0 ? session.questions[session.currentQuestionIndex] : null,
-          questionNumber: session.currentQuestionIndex + 1,
-          totalQuestions: QUESTIONS_PER_GAME,
-          timeLimit: session.currentQuestionIndex >= 0 ? calculateAdaptiveTimer(sessionId) : 0,
-          timeRemaining: session.currentQuestionIndex >= 0 ? session.questionEndTime - Date.now() : 0,
-          lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - session.lobbyStartTime) / 1000)),
-          results: []
-        });
+            gameState: 'lobby',
+            players: session.players,
+            currentQuestion: null,
+            questionNumber: 0,
+            totalQuestions: QUESTIONS_PER_GAME,
+            timeLimit: 0,
+            timeRemaining: 0,
+            lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - session.lobbyStartTime) / 1000)),
+            results: []
+          });
+        }
         break;
       }
     }
