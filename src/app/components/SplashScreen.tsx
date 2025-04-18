@@ -36,7 +36,7 @@ const SplashScreen: React.FC = () => {
           animate={{ scale: 1 }}
           transition={{ delay: 0.3, type: "spring", stiffness: 100 }}
         >
-          Dynamic Quiz Show
+          PeerPlay Quiz
         </motion.h1>
         <motion.p 
           className="text-2xl text-gray-200 dark:text-gray-300 font-light"
@@ -44,7 +44,7 @@ const SplashScreen: React.FC = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          Test your knowledge in real-time with players worldwide!
+          Synchronized quiz fun with friends, enhanced by direct P2P video connection.
         </motion.p>
       </motion.div>
 
