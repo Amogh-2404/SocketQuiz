@@ -639,64 +639,66 @@ io.on('connection', (socket) => {
       playerObject.score += 10;
     }
 
-    // Send updated player data
-    socket.emit('playerUpdate', playerObject);
-  });
+    // Broadcast updated player data to all clients for dynamic leaderboard
+    io.to(playerSession.id).emit('playerUpdate', playerObject);
+    // Also emit full leaderboard to update all clients
+    io.to(playerSession.id).emit('leaderboard', playerSession.players);
 
-  // Handle game start request from host
-  socket.on('startGame', () => {
-    for (const [sessionId, session] of sessions) {
-      const player = session.players.find(p => p.id === socket.id);
-      if (player && player.isHost) {
-        startGame(sessionId);
-        break;
-      }
-    }
-  });
-
-  socket.on('disconnect', () => {
-    // On disconnect, notify peers in the same session
-    for (const [sessionId, session] of sessions) {
-      if (session.players.some(p => p.id === socket.id)) {
-        socket.to(sessionId).emit('video-peer-leave', { peerId: socket.id });
-        break;
-      }
-    }
-    console.log('Client disconnected:', socket.id);
-    networkMonitor.stopMonitoring(socket.id);
-    
-    // Remove player from their session
-    for (const [sessionId, session] of sessions) {
-      const playerIndex = session.players.findIndex(p => p.id === socket.id);
-      if (playerIndex !== -1) {
-        session.players.splice(playerIndex, 1);
-        
-        // If no players left, remove the session
-        if (session.players.length === 0) {
-          sessions.delete(sessionId);
-          if (session.lobbyTimer) {
-            clearTimeout(session.lobbyTimer);
-          }
-        } else {
-          // Update remaining players
-          io.to(sessionId).emit('gameState', {
-  sessionId: sessionId,
-            gameState: session.status,
-            players: session.players,
-            currentQuestion: session.currentQuestionIndex >= 0 ? session.questions[session.currentQuestionIndex] : null,
-            questionNumber: session.currentQuestionIndex + 1,
-            totalQuestions: QUESTIONS_PER_GAME,
-            timeLimit: session.currentQuestionIndex >= 0 ? calculateAdaptiveTimer(sessionId) : 0,
-            timeRemaining: session.currentQuestionIndex >= 0 ? session.questionEndTime - Date.now() : 0,
-            lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - session.lobbyStartTime) / 1000)),
-            results: []
-          });
+    // Handle game start request from host
+    socket.on('startGame', () => {
+      for (const [sessionId, session] of sessions) {
+        const player = session.players.find(p => p.id === socket.id);
+        if (player && player.isHost) {
+          startGame(sessionId);
+          break;
         }
-        break;
       }
-    }
+    });
+
+    socket.on('disconnect', () => {
+      // On disconnect, notify peers in the same session
+      for (const [sessionId, session] of sessions) {
+        if (session.players.some(p => p.id === socket.id)) {
+          socket.to(sessionId).emit('video-peer-leave', { peerId: socket.id });
+          break;
+        }
+      }
+      console.log('Client disconnected:', socket.id);
+      networkMonitor.stopMonitoring(socket.id);
+      
+      // Remove player from their session
+      for (const [sessionId, session] of sessions) {
+        const playerIndex = session.players.findIndex(p => p.id === socket.id);
+        if (playerIndex !== -1) {
+          session.players.splice(playerIndex, 1);
+          
+          // If no players left, remove the session
+          if (session.players.length === 0) {
+            sessions.delete(sessionId);
+            if (session.lobbyTimer) {
+              clearTimeout(session.lobbyTimer);
+            }
+          } else {
+            // Update remaining players
+            io.to(sessionId).emit('gameState', {
+  sessionId: sessionId,
+              gameState: session.status,
+              players: session.players,
+              currentQuestion: session.currentQuestionIndex >= 0 ? session.questions[session.currentQuestionIndex] : null,
+              questionNumber: session.currentQuestionIndex + 1,
+              totalQuestions: QUESTIONS_PER_GAME,
+              timeLimit: session.currentQuestionIndex >= 0 ? calculateAdaptiveTimer(sessionId) : 0,
+              timeRemaining: session.currentQuestionIndex >= 0 ? session.questionEndTime - Date.now() : 0,
+              lobbyTimeRemaining: Math.max(0, LOBBY_TIMER - Math.floor((Date.now() - session.lobbyStartTime) / 1000)),
+              results: []
+            });
+          }
+          break;
+        }
+      }
+    });
   });
-});
+}); // Close io.on('connection')
 
 // Error handling
 server.on('error', (error) => {

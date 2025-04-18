@@ -179,7 +179,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     newSocket.on('playerUpdate', (updatedPlayer: Player) => {
-      setPlayer(updatedPlayer);
+      console.log('Received playerUpdate:', updatedPlayer);
+      setGameState(prev => ({
+        ...prev,
+        players: prev.players.map(p =>
+          p.id === updatedPlayer.id ? updatedPlayer : p
+        )
+      }));
+      // Only update local player if this update is for this client
+      if (updatedPlayer.id === newSocket.id) {
+        setPlayer(updatedPlayer);
+      }
+    });
+
+    newSocket.on('leaderboard', (players: Player[]) => {
+      console.log('Received leaderboard event:', players);
+      setGameState(prev => ({
+        ...prev,
+        players
+      }));
     });
 
     newSocket.on('disconnect', () => {
